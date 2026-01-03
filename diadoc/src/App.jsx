@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Globe, Terminal, Download, Trash2, FolderPlus, FilePlus } from 'lucide-react';
+import { generateFromLink, generateFromDocs } from './utils/api';
 
 export default function DiaDoc() {
   const [activeTab, setActiveTab] = useState('link');
@@ -14,121 +15,36 @@ export default function DiaDoc() {
   const [nextId, setNextId] = useState(2);
   const [selectedNode, setSelectedNode] = useState(null);
 
-  // Mock function to simulate API call and API response
-  const handleGenerateDiagram = async () => {
-    setLoading(true);
-    setError(null);
+const handleGenerateDiagram = async () => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    let result;
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    try {
-      if (activeTab === 'link' && !url) {
+    if (activeTab === 'link') {
+      if (!url) {
         throw new Error('Please enter a URL');
       }
-      if (activeTab === 'docs' && !docText) {
+      result = await generateFromLink(url);
+    } else if (activeTab === 'docs') {
+      if (!docText) {
         throw new Error('Please enter documentation text');
       }
-
-      // Mock response based on input type
-      let mockDiagram;
-      if (url.includes('github.com')) {
-        mockDiagram = `project-root/
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── src/
-│   ├── components/
-│   │   ├── Header.jsx
-│   │   └── Footer.jsx
-│   ├── utils/
-│   │   └── helpers.js
-│   └── App.jsx
-├── public/
-│   └── index.html
-├── .gitignore
-├── package.json
-└── README.md`;
-      } else {
-        mockDiagram = `documentation-project/
-├── docs/
-│   ├── getting-started.md
-│   ├── api-reference.md
-│   └── examples/
-│       ├── basic.md
-│       └── advanced.md
-├── assets/
-│   └── images/
-└── index.html`;
-      }
-
-      setDiagram(mockDiagram);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      result = await generateFromDocs(docText);
     }
-  };
-
-  const addNode = (type) => {
-    const newNode = {
-      id: nextId,
-      type,
-      name: type === 'folder' ? 'new-folder' : 'new-file.txt',
-      parent: selectedNode
-    };
-    setManualNodes([...manualNodes, newNode]);
-    setNextId(nextId + 1);
-  };
-
-  const deleteNode = (id) => {
-    const deleteNodeAndChildren = (nodeId) => {
-      const children = manualNodes.filter(n => n.parent === nodeId);
-      children.forEach(child => deleteNodeAndChildren(child.id));
-      setManualNodes(prev => prev.filter(node => node.id !== nodeId));
-    };
-    deleteNodeAndChildren(id);
-    if (selectedNode === id) setSelectedNode(null);
-  };
-
-  const updateNodeName = (id, name) => {
-    setManualNodes(manualNodes.map(node => 
-      node.id === id ? { ...node, name } : node
-    ));
-  };
-
-  const renderTree = (parentId, depth) => {
-    const children = manualNodes.filter(n => n.parent === parentId);
-    return children.map(node => (
-      <div key={node.id}>
-        <div
-          className={`flex items-center gap-2 p-2 mb-1 rounded cursor-pointer transition-colors ${
-            selectedNode === node.id ? 'bg-purple-600' : 'hover:bg-slate-600'
-          }`}
-          onClick={() => setSelectedNode(node.id)}
-          style={{ marginLeft: `${depth * 24}px` }}
-        >
-          {node.type === 'folder' ? '📁' : '📄'}
-          <input
-            type="text"
-            value={node.name}
-            onChange={(e) => updateNodeName(node.id, e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1 bg-transparent text-white border-none focus:outline-none"
-          />
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              deleteNode(node.id);
-            }}
-            className="text-red-400 hover:text-red-300 transition-colors"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-        {node.type === 'folder' && renderTree(node.id, depth + 1)}
-      </div>
-    ));
-  };
+    
+    if (result.success) {
+      setDiagram(result.diagram);
+    } else {
+      setError(result.error || 'Failed to generate diagram');
+    }
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const exportManualDiagram = () => {
     // Build tree structure including all nodes
