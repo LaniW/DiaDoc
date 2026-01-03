@@ -4,63 +4,61 @@ import { GoogleGenAI } from "@google/genai";
 const router = express.Router();
 const ai = new GoogleGenAI({});
 
+/**
+ * Extract project-relevant sentences from documentation text
+ */
+const extractProjectText = (docText) => {
+  return docText
+    .split(/[\.\n]/)
+    .filter(s => /folder|file|directory|module/i.test(s))
+    .join(". ");
+};
+
 router.post("/analyze", async (req, res) => {
   try {
     const { docText } = req.body;
-
     if (!docText) {
-      return res.status(400).json({
-        success: false,
-        error: "Documentation text is required",
-      });
+      return res.status(400).json({ success: false, error: "Documentation text is required" });
     }
-    console.log("📝 Analyzing documentation text...");
-    const prompt = `Analyze this documentation and extract the file/folder structure mentioned.
 
-Documentation:
-${docText}
+    console.log("📝 Analyzing documentation text...");
+    const projectText = extractProjectText(docText);
+
+    const prompt = `
+You are an expert at generating ASCII file structure diagrams for software projects.
+
+Input type: <GitHub repo / Documentation URL / Documentation text>
+
+Project information:
+<preprocessed project info: nested tree OR extracted text>
 
 RULES:
-1. Extract any explicitly mentioned files and folders
-2. Look for phrases like "in the src folder", "create a file called", etc.
-3. Infer logical structure from context
-4. Use proper ASCII tree characters: ├──, └──, │
-5. Add / after folder names
-6. Create a clear hierarchy
-7. Limit depth to 3–4 levels
+- Use proper ASCII tree characters: ├──, └──, │
+- Add / after folder names
+- Maintain correct hierarchy
+- Limit depth to 3–4 levels
+- Generate ONLY the ASCII diagram
 
-Generate ONLY the ASCII diagram, nothing else.`;
+`;
 
-    console.log("🤖 Calling Gemini API (gemini-2.5-flash)...");
-
+    console.log("🤖 Calling Gemini API...");
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
     });
 
     let diagram = response.text?.trim();
-
     if (!diagram || diagram.length < 10) {
       throw new Error("Generated diagram is empty or invalid");
     }
 
-    // Clean markdown code fences
     diagram = diagram.replace(/```[\w]*\n?/g, "").trim();
-
     console.log("✅ Gemini response received");
 
-    res.json({
-      success: true,
-      diagram,
-      metadata: { inputLength: docText.length },
-    });
+    res.json({ success: true, diagram, metadata: { inputLength: docText.length } });
   } catch (error) {
     console.error("❌ Error in docs analysis:", error);
-
-    res.status(500).json({
-      success: false,
-      error: error.message || "Gemini API error",
-    });
+    res.status(500).json({ success: false, error: error.message || "Gemini API error" });
   }
 });
 

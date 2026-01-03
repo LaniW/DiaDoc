@@ -9,8 +9,6 @@ export default function DiaDoc() {
   const [loading, setLoading] = useState(false);
   const [diagram, setDiagram] = useState(null);
   const [error, setError] = useState(null);
-
-  // Manual Builder state
   const [manualNodes, setManualNodes] = useState([
     { id: 1, type: 'folder', name: 'project-root', parent: null }
   ]);
@@ -44,7 +42,6 @@ export default function DiaDoc() {
     }
   };
 
-  // Manual Builder functions
   const addNode = (type) => {
     const newNode = {
       id: nextId,
@@ -241,31 +238,111 @@ export default function DiaDoc() {
               <div>
                 <h2 className="text-2xl font-bold text-white mb-6">Manual Diagram Builder</h2>
 
-                <div className="mb-6 flex gap-3 flex-wrap">
-                  <button onClick={() => addNode('folder')} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all">
-                    <FolderPlus size={18} /> Add Folder
+                {/* Controls: Add / Load / Indicator */}
+                <div className="flex gap-3 flex-wrap items-center mb-6">
+                  {/* Add Folder */}
+                  <button
+                    onClick={() => addNode('folder')}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
+                  >
+                    <FolderPlus size={18} />
+                    Add Folder
                   </button>
-                  <button onClick={() => addNode('file')} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all">
-                    <FilePlus size={18} /> Add File
+
+                  {/* Add File */}
+                  <button
+                    onClick={() => addNode('file')}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                  >
+                    <FilePlus size={18} />
+                    Add File
                   </button>
-                  <span className="flex items-center px-3 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">
-                    Adding to: <strong className="ml-1">{selectedNode ? manualNodes.find(n => n.id === selectedNode)?.name : 'Root Level'}</strong>
-                  </span>
+
+                  {/* Load .diadoc (hidden input + label) */}
+                  <input
+                    type="file"
+                    accept=".diadoc"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        try {
+                          const nodes = JSON.parse(event.target.result);
+                          setManualNodes(nodes);
+                          setSelectedNode(null);
+                          setDiagram(null);
+                        } catch (err) {
+                          console.error('Failed to load .diadoc file', err);
+                          alert('Failed to load file. Make sure it is a valid .diadoc file.');
+                        }
+                      };
+                      reader.readAsText(file);
+                    }}
+                    className="hidden"
+                    id="loadManualFile"
+                  />
+                  <label
+                    htmlFor="loadManualFile"
+                    className="cursor-pointer bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition-all"
+                  >
+                    Load .diadoc
+                  </label>
+
+                  {/* Adding to: indicator */}
+                  {selectedNode ? (
+                    <span className="flex items-center px-3 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm">
+                      Adding to: <strong className="ml-1">{manualNodes.find(n => n.id === selectedNode)?.name}</strong>
+                    </span>
+                  ) : (
+                    <span className="flex items-center px-3 py-2 bg-slate-700 text-slate-400 rounded-lg text-sm">
+                      Adding to: <strong className="ml-1">Root Level</strong>
+                    </span>
+                  )}
                 </div>
 
+                {/* File Tree */}
                 <div className="bg-slate-700 rounded-lg p-4 mb-6 max-h-96 overflow-y-auto">
+                  <h3 className="text-white font-medium mb-3">
+                    File Tree
+                    {selectedNode && (
+                      <span className="text-sm text-slate-400 ml-2">
+                        (Selected: {manualNodes.find(n => n.id === selectedNode)?.name})
+                      </span>
+                    )}
+                  </h3>
                   {renderTree(null, 0)}
                 </div>
 
-                <button
-                  onClick={exportManualDiagram}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
-                >
-                  <Terminal size={18} className="inline mr-2" /> Export as ASCII
-                </button>
+                {/* Export Buttons */}
+                <div className="flex gap-3 flex-wrap">
+                  {/* ASCII Export */}
+                  <button
+                    onClick={exportManualDiagram}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+                  >
+                    <Terminal size={18} />
+                    Export as ASCII
+                  </button>
+
+                  {/* Save .diadoc */}
+                  <button
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(manualNodes, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'diagram.diadoc';
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all"
+                  >
+                    💾 Save .diadoc
+                  </button>
+                </div>
               </div>
             )}
-
             {error && (
               <div className="mt-4 p-4 bg-red-900/50 border border-red-600 rounded-lg">
                 <p className="text-red-200">❌ Error: {error}</p>
