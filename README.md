@@ -1,7 +1,7 @@
 Desc: AI-assisted code documentation tool for the file structures of in-progress and existing software projects.
 
 
-A DiaDoc of DiaDoc🥸
+**A DiaDoc of DiaDoc**🥸
 
 AI-assisted-WPF-app-with-Azure-OpenAI/
 ├── .github/
