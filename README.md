@@ -1,4 +1,4 @@
-**AI-assisted code documentation tool for the file structures of in-progress and existing software projects.**
+## **AI-assisted code documentation tool for the file structures of in-progress and existing software projects.**
 
 
 **A DiaDoc of DiaDoc**🥸
